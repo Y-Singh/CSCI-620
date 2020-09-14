@@ -75,7 +75,7 @@ CREATE TABLE movie_writer_relation (
         REFERENCES writers (writer_id)
 );
 
-CREATE TABLE movie_producers_relation (
+CREATE TABLE movie_producer_relation (
     title_id INTEGER, 
     producer_id INTEGER,
     PRIMARY KEY (title_id, producer_id),
