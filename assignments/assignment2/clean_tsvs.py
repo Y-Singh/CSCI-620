@@ -1,106 +1,181 @@
-import csv
 import os
 import threading
 import pandas as pd
 import timeit
-from pdb import set_trace
+import csv
+
+# https://medium.com/@sureshssarda/pandas-splitting-exploding-a-column-into-multiple-rows-b1b1d59ea12e
+# https://stackoverflow.com/questions/34682828/extracting-specific-selected-columns-to-new-dataframe-as-a-copy
+# https://datacarpentry.org/python-ecology-lesson/05-merging-data/index.html
+# https://towardsdatascience.com/how-to-change-datatypes-in-pandas-in-4-minutes-677addf9a409
 
 class Cleaning:
     def __init__(self, path):
         self.path = path
+        self.logger = []
 
-        self.titles_fnames = ['id', 'titleType', 'primaryTitle', 'originalTitle', 'startYear', 'endYear', 'runtimeMinutes', 'averageRating', 'numVotes']
+    def clean_titles(self):
+        titles_tsv_df = pd.read_csv(self.path + "\\title.basics.tsv\\data.tsv", sep="\t", encoding="utf-8", low_memory=False)
+        titles_tsv_df = self.merge_ratings(titles_tsv_df)
+        # self.parse_genres(titles_tsv_df[['tconst', 'genres']].copy())
+        g = threading.Thread(
+            target = self.parse_genres,
+            args = (titles_tsv_df[['tconst', 'genres']].copy(),)
+        )
+        g.start()
+        titles_tsv_df = titles_tsv_df.drop(columns=['isAdult', 'genres'])
+        titles_tsv_df = titles_tsv_df.rename(columns={
+            'tconst': 'id',
+        })
+        titles_tsv_df['runtime']
+        titles_tsv_df['id'] = titles_tsv_df['id'].str.replace('tt', '')
+        self.write_df_to_csv(titles_tsv_df, "title.csv")
+        g.join()
+
+    def merge_ratings(self, titles_tsv_df):
+        ratings_tsv_df = pd.read_csv(self.path + "\\title.ratings.tsv\\data.tsv", sep="\t", encoding='utf-8')
+        df = pd.merge(left=titles_tsv_df, right=ratings_tsv_df, how='outer', left_on='tconst', right_on='tconst')
+        df['numVotes'] = df['numVotes'].astype('Int64')
+        return df
+    
+    def parse_genres(self, genres):
+        genres = genres.fillna('')
+        genres_df = pd.DataFrame(genres.genres.str.split(',').tolist(), index=genres.tconst).stack()
+        genres_df = genres_df.reset_index([0, 'tconst'])
+        genres_df.columns = ['title_id', 'genre']
+        genre_ids = pd.DataFrame(genres_df.genre.unique())
+
+        genre_ids.columns = ['genre']
+        genre_ids = genre_ids[genre_ids.genre != "\\N"]
+        genre_ids = genre_ids[genre_ids.genre != ""]
+
+        genre_ids = genre_ids.reset_index()
+        genre_ids = genre_ids.drop(columns=['index'])
+        genre_ids = genre_ids.reset_index()
+        genre_ids.columns = ['genre_id', 'genre']
+        genre_ids['genre_id'] = genre_ids['genre_id'].astype('str')
+
+        genres_df = pd.merge(left=genres_df, right=genre_ids, left_on='genre', right_on='genre', how='left')
+        genres_df = genres_df.drop(columns=['genre'])
+        genres_df = genres_df.dropna()
+        genres_df['title_id'] = genres_df['title_id'].str.replace('tt', '')
         
-        self.titles_csv_writer = None
-        self.ratings_tsv_reader = None
-        self.genre_csv_writer = None
-        self.ratings_tsv_df = None
-
-    def open_files(self):
-        self.titles_tsv = open(self.path + "\\title.basics.tsv\\data.tsv", 'r', encoding='utf-8')
-        self.titles_csv = open(self.path + "\\data\\titles.csv", "w", newline="", encoding='utf-8')
-        self.genres_csv = open(self.path + "\\data\\genres.csv", "w", newline="", encoding='utf-8')
-        self.names_tsv = open(self.path + "\\name.basics.tsv\\data.tsv", 'r', encoding='utf-8')
-        self.members_csv = open(self.path + "\\data\\members.csv", "w", newline="", encoding='utf-8')
-    
-    def close_files(self):
-        self.titles_tsv.close()
-        self.titles_csv.close()
-        self.genres_csv.close()
-
-    def clean_titles_basics(self):
-        titles_tsv = csv.DictReader(self.titles_tsv, delimiter="\t", quoting=csv.QUOTE_NONE)
-        # All keys = tconst, titleType, primaryTitle, originalTitle, isAdult, startYear, endYear, runtimeMinutes, genres
-        # Unwanted keys = isAdult
-        # (id, type, title, original_title, startYear, endYear, runtime, avgRating, numVotes)
-        for row in titles_tsv:
-            if row['isAdult'] == '0':
-                row.pop('isAdult')
-                row = self.get_ratings_votes(row)
-                row = self.pop_genres_csv(row)
-                row['id'] = row.pop('tconst')
-                self.pop_titles_csv(row)
-
-    def get_ratings_votes(self, data:dict):
-        if self.ratings_tsv_df is None:
-            self.ratings_tsv_df = pd.read_csv(self.path + "\\title.ratings.tsv\\data.tsv", sep="\t", encoding='utf-8')
-        try:
-            r = (self.ratings_tsv_df.loc[self.ratings_tsv_df['tconst'] == data['tconst']]).to_dict(orient='records')[0]
-            r.pop('tconst')
-        except IndexError as err:
-            r = dict()
-            r['averageRating'] = "NULL"
-            r['numVotes'] = "NULL"        
-        data.update(r)
-        return data
-    
-    def pop_genres_csv(self, data:dict):
-        if self.genre_csv_writer is None:
-            genres_fnames = ['tconst', 'genre']
-            self.genre_csv_writer = csv.DictWriter(self.genres_csv, fieldnames=genres_fnames)
-            self.genre_csv_writer.writeheader()
-        row = dict()
-        row['tconst'] = data['tconst']
-        genres = data['genres'].split(',')
-        for g in genres:
-            row['genre'] = g
-            self.genre_csv_writer.writerow(row)
-        data.pop('genres')
-        return data
-
-    def pop_titles_csv(self, data:dict):
-        if self.titles_csv_writer is None:
-            self.titles_csv_writer = csv.DictWriter(self.titles_csv, fieldnames=self.titles_fnames)
-            self.titles_csv_writer.writeheader()
-        data = self.clean_data(data)
-        self.titles_csv_writer.writerow(data)
-
-    def clean_data(self, data:dict):
-        for key, value in data.items():
-            if data[key] == "\\N":
-                data[key] = "NULL"
-        return data
-    
-    def clean_names_basics(self):
-        names_tsv = csv.DictReader(self.names_tsv, delimiter="\t",  quoting=csv.QUOTE_NONE)
-        for row in names_tsv:
-            row.pop('primaryProfession')
-            row.pop('knownForTitles')
-            row['id'] = self.pop_members_csv(row)
-    
-    def pop_members_csv(self, data:dict):
-        if self.members_csv_writer is None:
-            fnames = ['id', 'primaryName', 'birthYear', 'deathYear']
-            self.members_csv_writer = csv.DictWriter(self.members_csv, fieldnames=fnames)
-            self.members_csv_writer.writeheader()
-        data = self.clean_data(data)
-        self.members_csv_writer.writerow(data)
-
+        self.write_df_to_csv(genre_ids, "genre.csv")
+        self.write_df_to_csv(genres_df, "title_genre.csv")
         
+    
+    def clean_names(self):
+        names_tsv_df = pd.read_csv(self.path + "\\name.basics.tsv\\data.tsv", sep="\t", encoding='utf-8', low_memory=False)
+        # ************** Uncomment this if using first_name, last_name instead of name ************** #
+        # names_tsv_df[['firstName', 'lastName']] = names_tsv_df['primaryName'].loc[names_tsv_df['primaryName'].str.split().str.len() == 2].str.split(expand=True)
+        # names_tsv_df['firstName'].fillna(names_tsv_df['primaryName'], inplace=True)
+        # ******************************************************************************************* #
+        names_tsv_df = names_tsv_df.drop(columns=['primaryProfession', 'knownForTitles'])
+        names_tsv_df = names_tsv_df.rename(columns={
+            'nconst': 'id',
+            'primaryName': 'name'
+        })
+        names_tsv_df['id'] = names_tsv_df['id'].str.replace('nm', '')
+        self.write_df_to_csv(names_tsv_df, "member.csv")
+    
+    def clean_principals(self):
+        jobs_tsv_df = pd.read_csv(self.path + "\\title.principals.tsv\\data.tsv", sep="\t", encoding='utf-8', low_memory=False)
+        jobs_tsv_df = jobs_tsv_df.rename(columns={
+            'tconst': 'title_id',
+        })
+        jobs_tsv_df['title_id'] = jobs_tsv_df['title_id'].str.replace('tt', '')
+        jobs_tsv_df['nconst'] = jobs_tsv_df['nconst'].str.replace('nm', '')
+        actors_roles = jobs_tsv_df[(jobs_tsv_df['category'] == 'actor') | (jobs_tsv_df['category'] == 'actress')]
+        jobs_tsv_df = jobs_tsv_df.drop(columns=['ordering', 'job', 'characters'])
+        
+        directors = jobs_tsv_df[jobs_tsv_df.category == 'director']
+        writers = jobs_tsv_df[jobs_tsv_df.category == 'writer']
+        producers = jobs_tsv_df[jobs_tsv_df.category == 'producer']
+        actors = jobs_tsv_df[(jobs_tsv_df['category'] == 'actor') | (jobs_tsv_df['category'] == 'actress')]
+        
+        del jobs_tsv_df
+
+        directors = directors.drop(columns=['category'])
+        directors = directors.rename(columns={
+            'nconst': 'director_id'
+        })
+        writers = writers.drop(columns=['category'])
+        writers = writers.rename(columns={
+            'nconst': 'writer_id'
+        })
+        producers = producers.drop(columns=['category'])
+        producers = producers.rename(columns={
+            'nconst': 'producer_id'
+        })
+        actors = actors.drop(columns=['category'])
+        actors = actors.rename(columns={
+            'nconst': 'actor_id'
+        })
+        
+        d = threading.Thread(target=self.write_df_to_csv, args=(directors, "title_director.csv",))
+        w = threading.Thread(target=self.write_df_to_csv, args=(writers, "title_writer.csv",))
+        p = threading.Thread(target=self.write_df_to_csv, args=(producers, "title_producer.csv",))
+        a = threading.Thread(target=self.write_df_to_csv, args=(actors, "title_actor.csv",))
+        d.start()
+        w.start()
+        p.start()
+        a.start()
+        
+        self.parse_characters(actors_roles)
+        d.join()
+        w.join()
+        p.join()
+        a.join()
+
+    def parse_characters(self, actors_roles):
+        actors_roles['characters'] = actors_roles.characters.str.replace('[', '')
+        actors_roles['characters'] = actors_roles.characters.str.replace(']', '')
+        actors_roles['characters'] = actors_roles.characters.str.replace('"', '')
+        actors_roles = actors_roles.drop(columns=['ordering', 'category', 'job'])
+        actors_roles = actors_roles.assign(characters=actors_roles.characters.str.split(",")).explode('characters')
+
+        unique_roles = pd.DataFrame(actors_roles.characters.unique())
+        unique_roles.columns = ['role']
+        unique_roles = unique_roles[unique_roles.role != "\\N"]
+        unique_roles = unique_roles.reset_index()
+        unique_roles = unique_roles.drop(columns=['index'])
+        unique_roles = unique_roles.reset_index()
+        unique_roles.columns = ['id', 'role']
+        unique_roles['id'] = unique_roles['id'].astype('str')
+        # unique_roles['role'] = unique_roles.role.str.replace('"', '')
+
+        actors_roles = pd.merge(left=actors_roles, right=unique_roles, left_on='characters', right_on='role', how='left')
+        actors_roles = actors_roles.drop(columns=['characters', 'role'])
+        actors_roles = actors_roles.dropna()
+        actors_roles = actors_roles.rename(columns={'nconst': 'actor_id', 'id': 'role_id'})
+        self.write_df_to_csv(unique_roles, "role.csv")
+        self.write_df_to_csv(actors_roles, "actor_title_role.csv")
+
+
+    def clean_dataframes(self, df):
+        df = df.replace('\\N', "None")
+        df = df.replace('', "None")
+        df = df.replace()
+        df = df.fillna("None")
+        return df
+
+    def write_df_to_csv(self, df, csv_name):
+        df = self.clean_dataframes(df)
+        df.to_csv(self.path + "\\data\\" + csv_name, encoding='utf-8', index=False, sep=',')
+
+
 if __name__ == "__main__":
     path = os.path.dirname(os.path.abspath(__file__))
     c = Cleaning(path)
-    c.open_files()
-    print(timeit.timeit(c.clean_titles_basics, number=1))
-    c.close_files()
-    # c.reading_ratings()
+
+    # print(timeit.timeit(c.clean_titles, number=1))
+    c.clean_titles()
+
+    # print(timeit.timeit(c.clean_names, number=1))
+    # # c.clean_names()
+
+    # print(timeit.timeit(c.clean_principals, number=1))
+    # c.clean_principals()
+
+    if len(c.logger) > 0:
+        print(c.logger)
