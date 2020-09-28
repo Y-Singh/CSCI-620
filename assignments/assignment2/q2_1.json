@@ -1,0 +1,223 @@
+[
+ {
+  "Plan": {
+   "Node Type": "SetOp",
+   "Strategy": "Sorted",
+   "Parallel Aware": false,
+   "Command": "Except",
+   "Startup Cost": 6266016.43,
+   "Total Cost": 6494750.94,
+   "Plan Rows": 1645350,
+   "Plan Width": 12,
+   "Actual Startup Time": 12559.139,
+   "Actual Total Time": 16877.719,
+   "Actual Rows": 3115561,
+   "Actual Loops": 1,
+   "Output": [
+    "\"*SELECT* 1\".titleid",
+    "\"*SELECT* 1\".actorid",
+    "(0)"
+   ],
+   "Shared Hit Blocks": 96,
+   "Shared Read Blocks": 148624,
+   "Shared Dirtied Blocks": 0,
+   "Shared Written Blocks": 0,
+   "Local Hit Blocks": 0,
+   "Local Read Blocks": 0,
+   "Local Dirtied Blocks": 0,
+   "Local Written Blocks": 0,
+   "Temp Read Blocks": 292315,
+   "Temp Written Blocks": 292864,
+   "Plans": [
+    {
+     "Node Type": "Sort",
+     "Parent Relationship": "Outer",
+     "Parallel Aware": false,
+     "Startup Cost": 6266016.43,
+     "Total Cost": 6342261.26,
+     "Plan Rows": 30497935,
+     "Plan Width": 12,
+     "Actual Startup Time": 12559.135,
+     "Actual Total Time": 14663.315,
+     "Actual Rows": 30497935,
+     "Actual Loops": 1,
+     "Output": [
+      "\"*SELECT* 1\".titleid",
+      "\"*SELECT* 1\".actorid",
+      "(0)"
+     ],
+     "Sort Key": [
+      "\"*SELECT* 1\".titleid",
+      "\"*SELECT* 1\".actorid"
+     ],
+     "Sort Method": "external merge",
+     "Sort Space Used": 655944,
+     "Sort Space Type": "Disk",
+     "Shared Hit Blocks": 96,
+     "Shared Read Blocks": 148624,
+     "Shared Dirtied Blocks": 0,
+     "Shared Written Blocks": 0,
+     "Local Hit Blocks": 0,
+     "Local Read Blocks": 0,
+     "Local Dirtied Blocks": 0,
+     "Local Written Blocks": 0,
+     "Temp Read Blocks": 292315,
+     "Temp Written Blocks": 292864,
+     "Plans": [
+      {
+       "Node Type": "Append",
+       "Parent Relationship": "Outer",
+       "Parallel Aware": false,
+       "Startup Cost": 0.0,
+       "Total Cost": 911168.38,
+       "Plan Rows": 30497935,
+       "Plan Width": 12,
+       "Actual Startup Time": 0.025,
+       "Actual Total Time": 4660.58,
+       "Actual Rows": 30497935,
+       "Actual Loops": 1,
+       "Shared Hit Blocks": 96,
+       "Shared Read Blocks": 148624,
+       "Shared Dirtied Blocks": 0,
+       "Shared Written Blocks": 0,
+       "Local Hit Blocks": 0,
+       "Local Read Blocks": 0,
+       "Local Dirtied Blocks": 0,
+       "Local Written Blocks": 0,
+       "Temp Read Blocks": 0,
+       "Temp Written Blocks": 0,
+       "Subplans Removed": 0,
+       "Plans": [
+        {
+         "Node Type": "Subquery Scan",
+         "Parent Relationship": "Member",
+         "Parallel Aware": false,
+         "Alias": "*SELECT* 1",
+         "Startup Cost": 0.0,
+         "Total Cost": 401874.02,
+         "Plan Rows": 16453501,
+         "Plan Width": 12,
+         "Actual Startup Time": 0.024,
+         "Actual Total Time": 1873.36,
+         "Actual Rows": 16453501,
+         "Actual Loops": 1,
+         "Output": [
+          "\"*SELECT* 1\".titleid",
+          "\"*SELECT* 1\".actorid",
+          "0"
+         ],
+         "Shared Hit Blocks": 0,
+         "Shared Read Blocks": 72804,
+         "Shared Dirtied Blocks": 0,
+         "Shared Written Blocks": 0,
+         "Local Hit Blocks": 0,
+         "Local Read Blocks": 0,
+         "Local Dirtied Blocks": 0,
+         "Local Written Blocks": 0,
+         "Temp Read Blocks": 0,
+         "Temp Written Blocks": 0,
+         "Plans": [
+          {
+           "Node Type": "Seq Scan",
+           "Parent Relationship": "Subquery",
+           "Parallel Aware": false,
+           "Relation Name": "title_actor",
+           "Schema": "public",
+           "Alias": "title_actor",
+           "Startup Cost": 0.0,
+           "Total Cost": 237339.01,
+           "Plan Rows": 16453501,
+           "Plan Width": 8,
+           "Actual Startup Time": 0.023,
+           "Actual Total Time": 912.115,
+           "Actual Rows": 16453501,
+           "Actual Loops": 1,
+           "Output": [
+            "title_actor.titleid",
+            "title_actor.actorid"
+           ],
+           "Shared Hit Blocks": 0,
+           "Shared Read Blocks": 72804,
+           "Shared Dirtied Blocks": 0,
+           "Shared Written Blocks": 0,
+           "Local Hit Blocks": 0,
+           "Local Read Blocks": 0,
+           "Local Dirtied Blocks": 0,
+           "Local Written Blocks": 0,
+           "Temp Read Blocks": 0,
+           "Temp Written Blocks": 0
+          }
+         ]
+        },
+        {
+         "Node Type": "Subquery Scan",
+         "Parent Relationship": "Member",
+         "Parallel Aware": false,
+         "Alias": "*SELECT* 2",
+         "Startup Cost": 0.0,
+         "Total Cost": 356804.68,
+         "Plan Rows": 14044434,
+         "Plan Width": 12,
+         "Actual Startup Time": 0.02,
+         "Actual Total Time": 1834.567,
+         "Actual Rows": 14044434,
+         "Actual Loops": 1,
+         "Output": [
+          "\"*SELECT* 2\".titleid",
+          "\"*SELECT* 2\".actorid",
+          "1"
+         ],
+         "Shared Hit Blocks": 96,
+         "Shared Read Blocks": 75820,
+         "Shared Dirtied Blocks": 0,
+         "Shared Written Blocks": 0,
+         "Local Hit Blocks": 0,
+         "Local Read Blocks": 0,
+         "Local Dirtied Blocks": 0,
+         "Local Written Blocks": 0,
+         "Temp Read Blocks": 0,
+         "Temp Written Blocks": 0,
+         "Plans": [
+          {
+           "Node Type": "Seq Scan",
+           "Parent Relationship": "Subquery",
+           "Parallel Aware": false,
+           "Relation Name": "actor_title_role",
+           "Schema": "public",
+           "Alias": "actor_title_role",
+           "Startup Cost": 0.0,
+           "Total Cost": 216360.34,
+           "Plan Rows": 14044434,
+           "Plan Width": 8,
+           "Actual Startup Time": 0.019,
+           "Actual Total Time": 1133.342,
+           "Actual Rows": 14044434,
+           "Actual Loops": 1,
+           "Output": [
+            "actor_title_role.titleid",
+            "actor_title_role.actorid"
+           ],
+           "Shared Hit Blocks": 96,
+           "Shared Read Blocks": 75820,
+           "Shared Dirtied Blocks": 0,
+           "Shared Written Blocks": 0,
+           "Local Hit Blocks": 0,
+           "Local Read Blocks": 0,
+           "Local Dirtied Blocks": 0,
+           "Local Written Blocks": 0,
+           "Temp Read Blocks": 0,
+           "Temp Written Blocks": 0
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "Planning Time": 0.083,
+  "Triggers": [],
+  "Execution Time": 17005.523
+ }
+]

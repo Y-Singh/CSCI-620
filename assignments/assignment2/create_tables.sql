@@ -5,7 +5,7 @@ CREATE TABLE Title (
     originalTitle VARCHAR(512),
     startYear INTEGER,
     endYear INTEGER,
-    runtime VARCHAR(32),
+    runtime INTEGER,
     avgRatings DECIMAL,
     numVotes INTEGER
 );

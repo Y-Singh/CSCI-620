@@ -1,6 +1,9 @@
 from psycopg2 import errors, sql, connect
 import os
 import timeit
+import winsound
+import json
+
 
 class database:
     def __init__(self, path):
@@ -10,7 +13,8 @@ class database:
         self.cur = self.conn.cursor()
         self.path = path
         self.logger = []
-    
+        self.custom_queries = []
+
     def copy_init_info(self):
         t = open(self.path + '\\data\\title.csv', "r", encoding='utf-8')
         g = open(self.path + '\\data\\genre.csv', "r", encoding='utf-8')
@@ -29,26 +33,6 @@ class database:
             FROM STDIN WITH (NULL 'None', FORMAT CSV, HEADER);
         """.format(table_name = table_name)
         self.cur.copy_expert(query, f)
-        self.conn.commit()
-    
-    def copy_titles(self):
-        file_path = open(self.path + '\\data\\title.csv', "r", encoding='utf-8')
-        self.cur.copy_expert("""COPY title FROM STDIN WITH (NULL 'None', FORMAT CSV, HEADER);""", file_path)
-        self.conn.commit()
-    
-    def copy_genres(self):
-        file_path = open(self.path + '\\data\\genre.csv', "r", encoding='utf-8')
-        self.cur.copy_expert("""COPY genre FROM STDIN WITH (NULL 'None', FORMAT CSV, HEADER);""", file_path)
-        self.conn.commit()
-    
-    def copy_roles(self):
-        file_path = open(self.path + '\\data\\role.csv', "r", encoding='utf-8')
-        self.cur.copy_expert("""COPY role FROM STDIN WITH (NULL 'None', FORMAT CSV, HEADER);""", file_path)
-        self.conn.commit()
-    
-    def copy_member(self):
-        file_path = open(self.path + '\\data\\member.csv', "r", encoding='utf-8')
-        self.cur.copy_expert("""COPY member FROM STDIN WITH (NULL 'None', FORMAT CSV, HEADER);""", file_path)
         self.conn.commit()
     
     def copy_relations(self):
@@ -132,13 +116,14 @@ class database:
                     FROM actor_title_role
                 )
             """
+            self.custom_queries.append(query)
             self.cur.execute(query)
             missing = self.cur.fetchall()
-            print("\nExample Data :")
+            print("\n(2.1) Example Data :")
             for i in range(0, 5):
                 print(missing[i])
             print("\nThere are {} missing entries that are in Title_Actor that are not in Actor_Title_Role".format(len(missing)))
-    
+
         def get_phi_actors():
             """
             Returns the actors who are alive and name starts with "Phi" and did not participate in any movies in 2014
@@ -155,9 +140,10 @@ class database:
                     (t.type = 'movie' AND (t.startYear != 2014 or t.endYear != 2014))
                 );
             """
+            self.custom_queries.append(query)
             self.cur.execute(query)
             actors = self.cur.fetchall()
-            print("\nExample Data :")
+            print("\n(2.2) Example Data :")
             for i in range(0, 5):
                 print(actors[i])
         
@@ -166,7 +152,7 @@ class database:
             Returns the producers who has "Gill" in their name and who had a talk-show in 2017.
             Ordered in the number of who producer more
             """
-            query = """
+            query = f"""
                 SELECT m.name
                 FROM member m
                 JOIN title_producer tp
@@ -185,28 +171,122 @@ class database:
                 GROUP BY m.name
                 ORDER BY count(*) DESC;
             """
+            self.custom_queries.append(query)
             self.cur.execute(query)
             producers = self.cur.fetchall()
-            print("\nExample Data :")
+            print("\n(2.3) Example Data :")
             for i in range(0, 5):
                 print(producers[i])   
 
         def get_longrun_producers():
-            
+            """
+            Returns the name of producers who are alive and titles with runtimes greater than 120 minutes.
+            Is ordered by who has producered the most titles
+            """
+            query = """
+                SELECT m.name, COUNT(m.name) total
+                FROM member m
+                JOIN title_producer tp
+                    ON m.id = tp.producerid
+                    JOIN title t
+                        ON tp.titleid = t.id
+                WHERE (
+                    (m.deathYear IS NULL) AND
+                    (t.runtime > 120)
+                )
+                GROUP BY m.name
+                ORDER BY COUNT(*) DESC;
+            """
+            self.custom_queries.append(query)
+            self.cur.execute(query)
+            producers = self.cur.fetchall()
+            print("\n(2.4) Example Data :")
+            for i in range(0, 5):
+                print(producers[i])   
+
+        def get_actors_jesus():
+            query = f"""
+                SELECT m.name, r.role
+                FROM member m
+                JOIN actor_title_role atr
+                    ON m.id = atr.actorid
+                    JOIN role r
+                        ON atr.roleid = r.id
+                WHERE (
+                    (m.deathYear IS NULL) AND
+                    (LOWER(r.role) LIKE 'jesu%christ' OR LOWER(r.role) LIKE 'jesus' OR LOWER(r.role) = 'christ' )
+                )
+                ORDER BY r.role
+            """
+            self.custom_queries.append(query)
+            self.cur.execute(query)
+            actors = self.cur.fetchall()
+            print("\n(2.5) Example Data :")
+            for i in range(0, 5):
+                print(actors[i])
+
         qry_time = timeit.timeit(get_invalid_tas, number=1)
-        print("(2.1) It took {} seconds to query the number of missing entries".format(qry_time))
+        print("(2.1) It took {} seconds for this query".format(qry_time))
 
         qry_time = timeit.timeit(get_phi_actors, number=1)
-        print("(2.2) It took {} seconds to query the number of actors whos name starts with Phi...".format(qry_time))
+        print("(2.2) It took {} seconds for this query.".format(qry_time))
 
         qry_time = timeit.timeit(get_gill_producers, number=1)
-        print("(2.3) It took {} seconds to query the number of producers whos name contains 'Gill'...".format(qry_time))
+        print("(2.3) It took {} seconds for this query".format(qry_time))
+
+        qry_time = timeit.timeit(get_longrun_producers, number=1)
+        print("(2.4) It took {} seconds for this query".format(qry_time))
+
+        qry_time = timeit.timeit(get_actors_jesus, number=1)
+        print("(2.5) It took {} seconds for this query".format(qry_time))
+
+        self.queries_explain()
+
+    def queries_explain(self):
+        for num, query in enumerate(self.custom_queries):
+            self.cur.execute(self.cur.mogrify('EXPLAIN (ANALYZE, COSTS, VERBOSE, BUFFERS, FORMAT JSON) ' + query))
+            plan = self.cur.fetchall()[0][0]
+            with open("q2_{}.json".format(num+1), 'w') as f:
+                json.dump(plan, f, indent=1)
+    
+    def create_indexes(self):
+        qry_1 = """
+            CREATE INDEX title_actor_index ON title_actor (titleid, actorid);
+            CREATE INDEX actor_title_index ON actor_title_role (titleid, actorid);
+        """
+
+        qry_2 = """
+            CREATE INDEX title_start_year_index ON title(startYear);
+            CREATE INDEX title_end_year_index ON title(endYear);
+        """
+        qry_3 = """
+            CREATE INDEX member_name_index ON member(name);
+        """
+        qry_4 = """
+            CREATE INDEX member_death_year_index ON member(deathYear);
+            CREATE INDEX title_runtime_index ON title(runtime);
+        """
+
+        self.cur.execute(qry_1)
+        self.cur.execute(qry_2)
+        self.cur.execute(qry_3)
+        self.cur.execute(qry_4)
+        self.conn.commit()
 
 if __name__ == "__main__":
     path = os.path.dirname(os.path.abspath(__file__))
     db = database(path)
+
+    # runtime = timeit.timeit(db.copy_init_info, number=1)
+    # print("It took {} seconds to create the basic tables".format(runtime))
+
+    # runtime = timeit.timeit(db.copy_relations, number=1)
+    # print("It took {} seconds to create the basic tables".format(runtime))
+
     db.queries()
-    # print(timeit.timeit(db.copy_relations, number=1))
+
+    # db.create_indexes()
+    
     if len(db.logger) > 0:
         print(db.logger) 
-
+    winsound.Beep(440, 1000)

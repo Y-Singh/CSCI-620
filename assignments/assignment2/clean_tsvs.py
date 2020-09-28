@@ -3,6 +3,7 @@ import threading
 import pandas as pd
 import timeit
 import csv
+import winsound
 
 # https://medium.com/@sureshssarda/pandas-splitting-exploding-a-column-into-multiple-rows-b1b1d59ea12e
 # https://stackoverflow.com/questions/34682828/extracting-specific-selected-columns-to-new-dataframe-as-a-copy
@@ -27,7 +28,8 @@ class Cleaning:
         titles_tsv_df = titles_tsv_df.rename(columns={
             'tconst': 'id',
         })
-        titles_tsv_df['runtime']
+        titles_tsv_df['runtimeMinutes'] = pd.to_numeric(titles_tsv_df.runtimeMinutes.astype(str), errors='coerce')
+        titles_tsv_df['runtimeMinutes'] = titles_tsv_df['runtimeMinutes'].astype('Int64')
         titles_tsv_df['id'] = titles_tsv_df['id'].str.replace('tt', '')
         self.write_df_to_csv(titles_tsv_df, "title.csv")
         g.join()
@@ -62,8 +64,7 @@ class Cleaning:
         
         self.write_df_to_csv(genre_ids, "genre.csv")
         self.write_df_to_csv(genres_df, "title_genre.csv")
-        
-    
+           
     def clean_names(self):
         names_tsv_df = pd.read_csv(self.path + "\\name.basics.tsv\\data.tsv", sep="\t", encoding='utf-8', low_memory=False)
         # ************** Uncomment this if using first_name, last_name instead of name ************** #
@@ -151,7 +152,6 @@ class Cleaning:
         self.write_df_to_csv(unique_roles, "role.csv")
         self.write_df_to_csv(actors_roles, "actor_title_role.csv")
 
-
     def clean_dataframes(self, df):
         df = df.replace('\\N', "None")
         df = df.replace('', "None")
@@ -167,15 +167,15 @@ class Cleaning:
 if __name__ == "__main__":
     path = os.path.dirname(os.path.abspath(__file__))
     c = Cleaning(path)
-
-    # print(timeit.timeit(c.clean_titles, number=1))
-    c.clean_titles()
-
-    # print(timeit.timeit(c.clean_names, number=1))
-    # # c.clean_names()
-
-    # print(timeit.timeit(c.clean_principals, number=1))
-    # c.clean_principals()
+    
+    runtime = timeit.timeit(c.clean_titles, number=1)
+    print("It took {} seconds to clean and parse out title information".format(runtime))
+    runtime = timeit.timeit(c.clean_names, number=1)
+    print("It took {} seconds to clean and parse out members".format(runtime))
+    runtime = timeit.timeit(c.clean_principals, number=1)
+    print("It took {} seconds to clean and parse out member informations and relationships".format(runtime))
 
     if len(c.logger) > 0:
         print(c.logger)
+    
+    winsound.Beep(440, 1000)
