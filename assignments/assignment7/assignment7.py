@@ -3,7 +3,7 @@ import numpy as np
 from jproperties import Properties
 import os
 
-class DataCleaning:
+class ItemMining:
     def __init__(self, path) -> None:
         self.path = path
         self.logger = []
