@@ -16,7 +16,7 @@ class Cleaning:
         self.logger = []
 
     def clean_titles(self):
-        titles_tsv_df = pd.read_csv(self.path + "\\title.basics.tsv\\data.tsv", sep="\t", encoding="utf-8", low_memory=False)
+        titles_tsv_df = pd.read_csv(self.path + "\\data\\title.basics.tsv\\data.tsv", sep="\t", encoding="utf-8", low_memory=False)
         titles_tsv_df = self.merge_ratings(titles_tsv_df)
         # self.parse_genres(titles_tsv_df[['tconst', 'genres']].copy())
         g = threading.Thread(
@@ -35,7 +35,7 @@ class Cleaning:
         g.join()
 
     def merge_ratings(self, titles_tsv_df):
-        ratings_tsv_df = pd.read_csv(self.path + "\\title.ratings.tsv\\data.tsv", sep="\t", encoding='utf-8')
+        ratings_tsv_df = pd.read_csv(self.path + "\\data\\title.ratings.tsv\\data.tsv", sep="\t", encoding='utf-8')
         df = pd.merge(left=titles_tsv_df, right=ratings_tsv_df, how='outer', left_on='tconst', right_on='tconst')
         df['numVotes'] = df['numVotes'].astype('Int64')
         return df
@@ -66,7 +66,7 @@ class Cleaning:
         self.write_df_to_csv(genres_df, "title_genre.csv")
            
     def clean_names(self):
-        names_tsv_df = pd.read_csv(self.path + "\\name.basics.tsv\\data.tsv", sep="\t", encoding='utf-8', low_memory=False)
+        names_tsv_df = pd.read_csv(self.path + "\\data\\name.basics.tsv\\data.tsv", sep="\t", encoding='utf-8', low_memory=False)
         # ************** Uncomment this if using first_name, last_name instead of name ************** #
         # names_tsv_df[['firstName', 'lastName']] = names_tsv_df['primaryName'].loc[names_tsv_df['primaryName'].str.split().str.len() == 2].str.split(expand=True)
         # names_tsv_df['firstName'].fillna(names_tsv_df['primaryName'], inplace=True)
@@ -80,7 +80,7 @@ class Cleaning:
         self.write_df_to_csv(names_tsv_df, "member.csv")
     
     def clean_principals(self):
-        jobs_tsv_df = pd.read_csv(self.path + "\\title.principals.tsv\\data.tsv", sep="\t", encoding='utf-8', low_memory=False)
+        jobs_tsv_df = pd.read_csv(self.path + "\\data\\title.principals.tsv\\data.tsv", sep="\t", encoding='utf-8', low_memory=False)
         jobs_tsv_df = jobs_tsv_df.rename(columns={
             'tconst': 'title_id',
         })
@@ -112,6 +112,10 @@ class Cleaning:
         actors = actors.rename(columns={
             'nconst': 'actor_id'
         })
+        directors = directors.drop_duplicates(subset=['title_id', 'director_id'])
+        writers = writers.drop_duplicates(subset=['title_id', 'writer_id'])
+        producers = producers.drop_duplicates(subset=['title_id', 'producer_id'])
+        actors = actors.drop_duplicates(subset=['title_id', 'actor_id'])
         
         d = threading.Thread(target=self.write_df_to_csv, args=(directors, "title_director.csv",))
         w = threading.Thread(target=self.write_df_to_csv, args=(writers, "title_writer.csv",))

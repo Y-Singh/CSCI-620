@@ -1,4 +1,4 @@
-userfrom psycopg2 import errors, sql, connect
+from psycopg2 import errors, sql, connect
 import os
 import timeit
 import winsound

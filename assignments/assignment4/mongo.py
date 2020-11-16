@@ -3,12 +3,9 @@ import pandas as pd
 import numpy as np
 from pymongo import MongoClient
 from jproperties import Properties
-import subprocess
-import csv
 import timeit
-
 import json
-from pdb import set_trace
+
 # Notes
 # In MongoDB, a database is not created until it gets content
 class Mongo:
@@ -47,10 +44,6 @@ class Mongo:
         ukeys, index = np.unique(keys, True) # For the keys, we'll grab all of the unique keys and their index
         arrays = np.split(values, index[1:]) # 
         df2 = pd.DataFrame({group_col:ukeys, data_list_col:[list(a) for a in arrays]})
-        return df2
-
-    def agg_mapping_title_id_relationships(self, df, group_col:str, data_list_col:str):
-        df2 = df.groupby(group_col).agg(lambda x: tuple(x)).applymap(list).reset_index()
         return df2
         
     def get_actors_map(self):
